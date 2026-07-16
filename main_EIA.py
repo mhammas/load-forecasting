@@ -22,7 +22,7 @@ model = AutoModelForCausalLM.from_pretrained(
 
 # Data Loading and Cleaning
 
-df = pd.read_csv("EIA930_BALANCE_2026_Jul_Dec.csv")
+df = pd.read_csv("EIA930_BALANCE_2025_Jul_Dec.csv")
 
 # EIA CSVs often store numeric columns with thousands separators (e.g. "12,345"),
 # which pandas reads as strings unless told otherwise. Force numeric conversion:
