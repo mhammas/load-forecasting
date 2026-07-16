@@ -6,5 +6,5 @@ For model evaluation (PJM):
 
 For model evaluation (EIA):
 1. Download data from EIA: https://www.eia.gov/electricity/gridmonitor/dashboard/electric_overview/balancing_authority/MISO
-2. Run main_PJM.py
+2. Run main_EIA.py
 
