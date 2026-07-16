@@ -22,21 +22,43 @@ model = AutoModelForCausalLM.from_pretrained(
 
 # Data Loading and Cleaning
 
-df = pd.read_csv("load_frcstd_hist_12months.csv")
-df["evaluated_at_utc"] = pd.to_datetime(df["evaluated_at_utc"])
-df["forecast_hour_beginning_utc"] = pd.to_datetime(df["forecast_hour_beginning_utc"])
+df = pd.read_csv("hrl_load_metered.csv")
+df["datetime_beginning_utc"] = pd.to_datetime(df["datetime_beginning_utc"])
 
-AREA = "RTO"
-df_area = df[df["forecast_area"] == AREA].copy()
+# Inspect what zones are available before picking one
 
-df_area = df_area.sort_values(["forecast_hour_beginning_utc", "evaluated_at_utc"])
-df_latest = df_area.drop_duplicates(subset="forecast_hour_beginning_utc", keep="last")
-df_latest = df_latest.sort_values("forecast_hour_beginning_utc").reset_index(drop=True)
+print(df["load_area"].value_counts())
 
-series = df_latest["forecast_load_mw"].astype(float).tolist()
-timestamps = df_latest["forecast_hour_beginning_utc"].tolist()
+# Pick a single zone (RTO = system-wide total)
+
+ZONE = "RTO"   # change to any other value printed above, e.g. "AEP", "DOM"
+df_zone = df[df["load_area"] == ZONE].copy()
+
+# Check for duplicate timestamps before assuming one row per hour
+
+dupe_count = df_zone["datetime_beginning_utc"].duplicated().sum()
+print("Duplicate timestamps:", dupe_count)
+
+if dupe_count > 0:
+    # if a zone has more than one row per hour (e.g. a preliminary submission
+    # plus a later verified one), prefer the company-verified value
+    df_zone = df_zone.sort_values(["datetime_beginning_utc", "Company Verified"])
+    df_zone = df_zone.drop_duplicates(subset="datetime_beginning_utc", keep="last")
+
+df_zone = df_zone.sort_values("datetime_beginning_utc").reset_index(drop=True)
+
+series = df_zone["mw"].astype(float).tolist()
+timestamps = df_zone["datetime_beginning_utc"].tolist()
 
 print("Total points:", len(series))
+
+# Sanity check: confirm no missing hours
+
+full_range = pd.date_range(
+    min(timestamps), max(timestamps), freq="H"
+)
+missing = full_range.difference(pd.DatetimeIndex(timestamps))
+print("Missing hours:", len(missing), "/", len(full_range))
 
 # Pipeline
 
@@ -223,4 +245,3 @@ results = pd.DataFrame({
 
 results.to_csv("llm_predictions.csv", index=False)
 pd.DataFrame(raw_logs).to_csv("llm_raw_logs.csv", index=False)
-
